@@ -17,7 +17,7 @@ public class MapEvolution {
 	/*
 	 * Bigger populations take longer, but allow more diversity in the gene pool.
 	 */
-	public static final int POPULATION_SIZE = 150;
+	public static final int POPULATION_SIZE = 100;
 	
 	/*
 	 * STEADY_STATE = true -> means that we keep the parents for the next generation. This is
@@ -33,59 +33,80 @@ public class MapEvolution {
 	 */
 	public static final boolean NOVELTY_INJECTION = true;
 	
+	public static final int MAX_GENERATIONS = 1000;
+	public static int GENERATIONS_PASSED = 0;
+	
 	public static void main(String[] args){
 		//Hooray for objects!
 		new MapEvolution().evolveMap();
 	}
-	
-	public void evolveMap(){
+
+	public void initPopulation(){
 		//Step 1 - initialise a population with random solutions
 		for(int i=0; i<POPULATION_SIZE; i++){
 			population.add(new AMap());
 		}
-		
+	}
+	
+	public boolean tickGeneration(){
+		return tickGeneration(true);
+	}
+	
+	public boolean tickGeneration(boolean verbose){
 		//Step 2 - sort the population based on fitness
-		for(int i=0; i<10000; i++){
-			Collections.sort(population, new MapComparator());
-//			System.out.println(i);
+		Collections.sort(population, new MapComparator());
+
+		/*
+		 * This is debug code, really, but watching how fitness changes over time
+		 * can give you vital info on your evolutionary process. You might find that
+		 * nothing happens after 500 generations, in which case you're either wasting 
+		 * time running your program for longer, or there's a problem with your setup.
+		 */
+		if(verbose && GENERATIONS_PASSED % 100 == 0){
+			System.out.println(population.get(0).length);
+			printMap(population.get(0).map);
+			printPath(population.get(0));
+		}
+		
+		LinkedList<AMap> nextGeneration = new LinkedList<AMap>();
+		
+		while(nextGeneration.size() < POPULATION_SIZE){
+			AMap parent1 = population.removeFirst();
+			AMap parent2 = population.removeFirst();
+			
+			if(STEADY_STATE){
+				nextGeneration.add(parent1);
+				nextGeneration.add(parent2);
+			}
+			
 			/*
-			 * This is debug code, really, but watching how fitness changes over time
-			 * can give you vital info on your evolutionary process. You might find that
-			 * nothing happens after 500 generations, in which case you're either wasting 
-			 * time running your program for longer, or there's a problem with your setup.
+			 * Mix and match crossover styles as you wish. I tend to blend a few together.
 			 */
-			if(i % 1 == 0){
-				//System.out.println(population.get(0).length);
-				//printMap(population.get(0).map);
-				//printPath(population.get(0));
+			nextGeneration.add(parent1.crossoverOnePoint(parent2));
+			nextGeneration.add(parent2.crossoverOnePoint(parent1));
+			nextGeneration.add(parent1.crossoverViaPointSwap(parent2));
+			nextGeneration.add(parent2.crossoverViaPointSwap(parent1));
+			nextGeneration.add(parent1.mutate());
+			nextGeneration.add(parent2.mutate());
+			
+			if(NOVELTY_INJECTION){
+				//Add in a purely random map, to discourage early convergence.
+				nextGeneration.add(new AMap());
+				nextGeneration.add(new AMap());
 			}
-			
-			LinkedList<AMap> nextGeneration = new LinkedList<AMap>();
-			
-			while(nextGeneration.size() < POPULATION_SIZE){
-				AMap parent1 = population.removeFirst();
-				AMap parent2 = population.removeFirst();
-				
-				if(STEADY_STATE){
-					nextGeneration.add(parent1);
-					nextGeneration.add(parent2);
-				}
-				
-				/*
-				 * Mix and match crossover styles as you wish. I tend to blend a few together.
-				 */
-				nextGeneration.add(parent1.crossoverOnePoint(parent2));
-				nextGeneration.add(parent2.crossoverOnePoint(parent1));
-				nextGeneration.add(parent1.crossoverViaPointSwap(parent2));
-				nextGeneration.add(parent2.crossoverViaPointSwap(parent1));
-				
-				if(NOVELTY_INJECTION){
-					//Add in a purely random map, to discourage early convergence.
-					nextGeneration.add(new AMap());
-				}
-			}
-			
-			population = nextGeneration;
+		}
+		
+		population = nextGeneration;
+		GENERATIONS_PASSED++;
+		
+		return GENERATIONS_PASSED >= MAX_GENERATIONS;
+	}
+	
+	public AMap evolveMap(){
+		initPopulation();
+		
+		for(int i=0; i<MAX_GENERATIONS; i++){
+			tickGeneration();
 		}
 		
 		Collections.sort(population, new MapComparator());
@@ -96,6 +117,27 @@ public class MapEvolution {
 		this.printMap(population.get(0).map);
 		this.printPath(population.get(0));
 		
+		return population.get(0);
+	}
+	
+	public AMap evolveMap(boolean verbose){
+		initPopulation();
+		
+		for(int i=0; i<MAX_GENERATIONS; i++){
+			tickGeneration(verbose);
+		}
+		
+		Collections.sort(population, new MapComparator());
+		
+		if(verbose){
+			System.out.println(population.get(0).length);
+			System.out.println(population.get(population.size()-1).length);
+			
+			this.printMap(population.get(0).map);
+			this.printPath(population.get(0));
+		}
+		
+		return population.get(0);
 	}
 	
 	private void printPath(AMap aMap){
@@ -122,6 +164,14 @@ public class MapEvolution {
 			System.out.println();
 		}
 		System.out.println("---");
+	}
+
+	public AMap getBestMapSoFar() {
+		return population.get(0);
+	}
+
+	public boolean evolutionFinished() {
+		return MAX_GENERATIONS <= GENERATIONS_PASSED;
 	}
 
 }

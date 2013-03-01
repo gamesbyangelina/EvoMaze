@@ -10,8 +10,8 @@ import org.gamesbyangelina.advoo.search.SearchPointComparator;
 public class AMap {
 	
 	//Feel free to play with these.
-	public static final int MAP_WIDTH = 10;
-	public static final int MAP_HEIGHT = 10;
+	public static final int MAP_WIDTH = 12;
+	public static final int MAP_HEIGHT = 12;
 	
 	public boolean[][] map;
 	
@@ -152,6 +152,26 @@ public class AMap {
 		}
 		
 		child.length = child.calculateLength();
+		
+		return child;
+	}
+	
+	/*
+	 * New for 2013! Mutation!
+	 * Evolution isn't perfect. One big problem it has is that crossover only
+	 * gets you so far - it can't make small adjustments very well. Mutation
+	 * helps with this - it makes smaller changes to a single solution to try and
+	 * slowly improve them. Here, we just randomly flip ten tiles in the map. 
+	 */
+	public AMap mutate() {
+		int flip_amount = 10;
+		AMap child = new AMap(this);
+		
+		for(int n=0; n<flip_amount; n++){
+			int random_x = (int) (Math.random()*this.map.length);
+			int random_y = (int) (Math.random()*this.map[0].length);
+			child.map[random_x][random_y] = !child.map[random_x][random_y];
+		}
 		
 		return child;
 	}
